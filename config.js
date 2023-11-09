@@ -49,6 +49,7 @@ io.use((socket, next) =>{
 })
 
 module.exports = {
+    app,
     server,
     driver,
     io
