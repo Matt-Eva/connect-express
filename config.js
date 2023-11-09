@@ -7,7 +7,7 @@ const { Server } = require("socket.io")
 
 const driver = neo.driver(process.env.NEO_URL, neo.auth.basic(process.env.NEO_USER, process.env.NEO_PASSWORD))
 
-const testDriverConnectivitytry = async (driver) => {
+const testDriverConnectivity = async (driver) => {
     try {
         await driver.verifyConnectivity()
         console.log("connected")
@@ -17,7 +17,7 @@ const testDriverConnectivitytry = async (driver) => {
     }
 }
 
-testDriverConnectivitytry(driver)
+testDriverConnectivity(driver)
 
 const app = express()
 const server = http.createServer(app)
@@ -42,6 +42,10 @@ const io = new Server(server, {
         origin: process.env.FRONTEND_URL,
         credentials: true
     }
+})
+
+io.use((socket, next) =>{
+    sessionMiddleware(socket.request, {}, next)
 })
 
 module.exports = {
