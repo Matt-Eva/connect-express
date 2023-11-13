@@ -1,20 +1,19 @@
 const {uuid} = require("../seedConfig.js")
 
 const createUsersWithConnections = async(session, user1, user2) =>{
-  console.log("creating connections")
-  console.log(user1, user2)
   try {
     const createConnected = `
-      MERGE(u1:User {id: $u1Id, name: $u1Name}) - [c:CONNECTED] -> (u2:USER {id: $u2Id, name: $u2Name})
+      MERGE (u1:User {uId: $u1Id, name: $u1Name})
+      MERGE (u2:USER {uId: $u2Id, name: $u2Name})
+      MERGE (u1) - [c:CONNECTED] -> (u2)
       RETURN u1, u2, c
     `
     const result = await session.executeWrite(async tx =>{
-      return await tx.run(createConnected, {u1Id: user1.id, u1Name: user1.name, u2Id: user2.id, u2Name: user2.name})
+      return await tx.run(createConnected, {u1Id: user1.uId, u1Name: user1.name, u2Id: user2.uId, u2Name: user2.name})
     })
-    // console.log(result)
-    for (const record of result.records){
-      console.log([record.get("u1"), record.get("u2"), record.get("c")])
-    }
+    // for (const record of result.records){
+    //   console.log([record.get("u1"), record.get("u2"), record.get("c")])
+    // }
   } catch (e) {
     console.error(e)
   }
@@ -24,31 +23,31 @@ const createUsers = async (driver) =>{
     const session = driver.session()
     const users = [
       {
-      id: uuid(),
-      name: "Matt"
+        uId: uuid(),
+        name: "Matt"
       }, 
       {
-      id: uuid(),
-      name: "CJ"
+        uId: uuid(),
+        name: "CJ"
       }, 
       {
-      id: uuid(),
-      name: "Wills"
+        uId: uuid(),
+        name: "Wills"
       }, 
       {
-      id: uuid(),
-      name: "Tom"
+        uId: uuid(),
+        name: "Tom"
       }, 
       {
-        id: uuid(),
+        uId: uuid(),
         name: "Nick"
       }, 
       {
-        id: uuid(),
+        uId: uuid(),
         name: "Jay"
       }, 
       {
-        id: uuid(),
+        uId: uuid(),
         name: "Mustafa"
       }
     ]

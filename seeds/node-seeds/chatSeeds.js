@@ -15,16 +15,28 @@ const createChat = async (session, chat)  => {
     }
 }
 
-const createChats = async (driver) =>{
-    const chats = []
-    const session = driver.session()
-    for (let i = 0; i < 7; i++){
-        const chat = {id: uuid()}
-        await createChat(session, chat)
-        chats.push(chat)
+const createChats = async (driver, users) =>{
+    const session = await driver.session()
+    for (const user of users){
+        try{
+            const result = await session.executeWrite(async tx => {
+                const usersResults = await tx.run(
+                    'MATCH (:User {id: $userId}) - [:CONNECTED] - (u:User) RETURN u AS connection', {userId: user.uId}
+                )
+                return usersResults
+                // const connections = []
+                // for (const record of usersResults.records){
+                //     const user = record.get("connection").properties
+                //     connections.push(user)
+                // }
+                // return connections
+            })
+            console.log(result)
+        } catch(e){
+            console.error(e)
+        }
     }
     await session.close()
-    return chats;
 }
 
 module.exports = {
