@@ -1,0 +1,1 @@
+// for seeding the relationship User - [:PARTICIPATING] -> Chat

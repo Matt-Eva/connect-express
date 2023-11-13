@@ -11,5 +11,4 @@ And 4 Relationship types
 
 1. User - User: CONNECTED
 2. User - Chat: PARTICIPATING_IN_CHAT
-3. User - Message: SENT
 4. Message - Chat: SENT_IN_CHAT

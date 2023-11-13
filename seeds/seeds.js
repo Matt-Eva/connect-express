@@ -1,7 +1,11 @@
 const {driver, closeDriver} = require('./seedConfig.js')
-const {createUsers} = require('./nodeSeeds/userSeeds.js')
-const {createChats} = require("./nodeSeeds/chatSeeds.js")
-const {createMessages} = require('./nodeSeeds/messageSeeds.js')
+const {createUsers} = require('./node-seeds/userSeeds.js')
+const {createMultiples} = require('./testCreateMultiple.js')
+const {createChats} = require("./node-seeds/chatSeeds.js")
+const {createMessages} = require('./node-seeds/messageSeeds.js')
+const {seedConnected} = require('./relationship-seeds/connectedSeeds.js')
+
+console.log(seedConnected)
 
 const clearDatabase = async () =>{
     try{
@@ -19,8 +23,10 @@ const clearDatabase = async () =>{
 const seed = async () =>{
     await clearDatabase()
     const users = await createUsers(driver)
+    await createMultiples(driver, users)
     const chats = await createChats(driver)
     const messages = await createMessages(driver)
+    await seedConnected(driver, users)
     await closeDriver()
 }
 

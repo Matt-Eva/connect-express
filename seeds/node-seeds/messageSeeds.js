@@ -3,17 +3,17 @@ const { faker } = require("@faker-js/faker")
 
 const createMessage = async (session, message) =>{
     try {
-    const createMessage = `
-        CREATE (m:Message {text: $text, id: $id}) RETURN m AS message
-    `
-    const results = await session.executeWrite(async tx =>{
-        return await tx.run(createMessage, message)
-    })
-    for (const record of results.records){
-        console.log(record.get("message"))
-    }
+        const createMessage = `
+            CREATE (m:Message {text: $text, id: $id}) RETURN m AS message
+        `
+        const results = await session.executeWrite(async tx =>{
+            return await tx.run(createMessage, message)
+        })
+        // for (const record of results.records){
+        //     console.log(record.get("message"))
+        // }
     } catch(e) {
-    console.error(e)
+        console.error(e)
     }
 }
 
