@@ -8,23 +8,29 @@ io.on("connection", async (socket) =>{
     console.log("connecting socket")
     console.log("userId", socket.request.session.userId)
     console.log("chatId", socket.handshake.query.chatId)
-    console.log("socketId", socket.id)
+    // console.log("socketId", socket.id)
     const session = driver.session()
     if (!socket.request.session.userId) return socket.disconnect()
     try {
         const userId = socket.request.session.userId
         const chatId = socket.handshake.query.chatId
-        const query = "MATCH (:User {uId: $userId}) - [:PARTICIPATING] -> (c:Chat {uId: $chatId}) <- [:SENT_IN_CHAT] - (m:Message) RETURN c, m"
+        const query = `
+            MATCH (:User {uId: $userId}) - [:PARTICIPATING] -> (c:Chat {uId: $chatId}) <- [:SENT_IN_CHAT] - (m:Message) <- [:SENT] - (u:User)
+            WHERE NOT u.uId = $userId
+            RETURN u, m
+        `
         const result = await session.executeRead(async tx => tx.run(query, {userId: userId, chatId: chatId}))
-        if (result.records.length === 0) return socket.disconnect()
+        // if (result.records.length === 0) return socket.disconnect()
         const messages = []
         for (const record of result.records){
-            console.log([record.get('c'), record.get('m')])
+            console.log([record.get('u'), record.get('m')])
             const message = record.get('m').properties
-            messages.push(message)
+            const user = record.get('u').properties
+            messages.push([user, message])
         }
 
-        
+        socket.emit("load", messages)
+
     } catch(e) {
         console.error(e)
     } finally {
