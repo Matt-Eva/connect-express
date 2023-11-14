@@ -64,7 +64,7 @@ const createUsers = async (driver) =>{
         relTracker[b].push(i)
         const user1 = users[i]
         const user2 = users[b]
-        console.log(i, b)
+        // console.log(i, b)
         await createUsersWithConnections(session, user1, user2)
        }
     }

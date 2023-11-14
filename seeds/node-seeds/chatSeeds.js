@@ -23,15 +23,38 @@ const createChats = async (driver, users) =>{
                 const usersResults = await tx.run(
                     'MATCH (:User {uId: $userId}) - [:CONNECTED] - (u:User) RETURN u AS connection', {userId: user.uId}
                 )
-                // return usersResults
-                const connections = []
+
+                const connections = [user]
                 for (const record of usersResults.records){
-                    const user = record.get("connection").properties
-                    connections.push(user)
+                    const connection = record.get("connection").properties
+                    connections.push(connection)
                 }
-                return connections
+                console.log(connections)
+
+                const existingChat = await tx.run(`
+                    MATCH (chat:Chat)
+                    WHERE all(connection IN $connections WHERE (:User {uId: connection.uId}) - [:PARTICIPATING] -> (chat))
+                    RETURN chat
+                `, {connections})
+
+                if (existingChat.records.length !== 0) {
+                    const returnArray = [existingChat.records[0].get('chat')]
+                    return returnArray
+                }
+                
+                const newChat = await tx.run(`
+                    CREATE (c:Chat {uId: $uId})
+                    WITH c
+                    UNWIND $connections AS connection
+                    MATCH (u:User {uId: connection.uId})
+                    MERGE (u) - [p:PARTICIPATING] -> (c)
+                    RETURN c AS chat, p AS participating, u AS user
+                `, {uId: uuid(), connections: connections})
+
+                return newChat
             })
-            // console.log(result)
+           
+            console.log(result)
         } catch(e){
             console.error(e)
         }
