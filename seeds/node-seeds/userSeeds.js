@@ -4,7 +4,7 @@ const createUsersWithConnections = async(session, user1, user2) =>{
   try {
     const createConnected = `
       MERGE (u1:User {uId: $u1Id, name: $u1Name})
-      MERGE (u2:USER {uId: $u2Id, name: $u2Name})
+      MERGE (u2:User {uId: $u2Id, name: $u2Name})
       MERGE (u1) - [c:CONNECTED] -> (u2)
       RETURN u1, u2, c
     `

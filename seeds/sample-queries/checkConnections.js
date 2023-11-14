@@ -8,6 +8,7 @@ const checkConnections = async () =>{
         const results = await session.executeRead(async tx =>{
             return await tx.run(checkConnected)
         })
+        console.log(results)
         for (const record of results.records){
             console.log([record.get("u1"), record.get("u2")])
         }

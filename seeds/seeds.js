@@ -14,7 +14,7 @@ const clearDatabase = async () =>{
             await tx.run("MATCH (n) DETACH DELETE n ")
         })
         console.log("cleared")
-    } catch(e){
+    } catch(e) {
         console.error(e)
     }
 }
