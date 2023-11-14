@@ -19,7 +19,7 @@ const createChats = async (driver, users) =>{
     const session = await driver.session()
     for (const user of users){
         try{
-            const result = await session.executeWrite(async tx => {
+            await session.executeWrite(async tx => {
                 const usersResults = await tx.run(
                     'MATCH (:User {uId: $userId}) - [:CONNECTED] - (u:User) RETURN u AS connection', {userId: user.uId}
                 )
@@ -29,7 +29,6 @@ const createChats = async (driver, users) =>{
                     const connection = record.get("connection").properties
                     connections.push(connection)
                 }
-                console.log(connections)
 
                 const existingChat = await tx.run(`
                     MATCH (chat:Chat)
@@ -53,8 +52,7 @@ const createChats = async (driver, users) =>{
 
                 return newChat
             })
-           
-            console.log(result)
+
         } catch(e){
             console.error(e)
         }
