@@ -9,7 +9,7 @@ io.on("connection", async (socket) =>{
     console.log(socket.request.session.user)
 })
 
-app.get("/login", (req, res) =>{
+app.post("/login", (req, res) =>{
     req.session.user = true
     console.log(req.session.id)
     res.status(200).send({user: req.session.user})
