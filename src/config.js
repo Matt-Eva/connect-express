@@ -4,6 +4,7 @@ const cors = require("cors")
 const session = require("express-session")
 const http = require("http")
 const { Server } = require("socket.io")
+let Neo4jStore = require('connect-neo4j')(session)
 
 const driver = neo.driver(process.env.NEO_URL, neo.auth.basic(process.env.NEO_USER, process.env.NEO_PASSWORD))
 
@@ -23,6 +24,7 @@ const app = express()
 const server = http.createServer(app)
 
 const sessionMiddleware = session({
+    store: new Neo4jStore({ client: driver }),
     secret: process.env.SESSION_SECRET,
     saveUninitialized: false,
     resave: false
@@ -44,9 +46,11 @@ const io = new Server(server, {
     }
 })
 
-io.use((socket, next) =>{
-    sessionMiddleware(socket.request, {}, next)
-})
+io.engine.use(sessionMiddleware)
+
+// io.use((socket, next) =>{
+//     sessionMiddleware(socket.request, {}, next)
+// })
 
 module.exports = {
     app,
