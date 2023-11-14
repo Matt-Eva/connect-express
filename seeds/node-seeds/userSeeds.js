@@ -5,7 +5,7 @@ const createUsersWithConnections = async(session, user1, user2) =>{
     const createConnected = `
       MERGE (u1:User {uId: $u1Id, name: $u1Name})
       MERGE (u2:User {uId: $u2Id, name: $u2Name})
-      MERGE (u1) - [c:CONNECTED] -> (u2)
+      MERGE (u1) - [c:CONNECTED] - (u2)
       RETURN u1, u2, c
     `
     const result = await session.executeWrite(async tx =>{
@@ -51,14 +51,22 @@ const createUsers = async (driver) =>{
         name: "Mustafa"
       }
     ]
+    const relTracker = {}
     for (let i = 0; i < users.length; i++){
-        const user1 = users[i]  
-        for(let n = 1; n <= 3; n ++){
-          const a = i + n
-          const b = a >= users.length ? a - users.length : a
-          const user2 = users[b]
-          await createUsersWithConnections(session, user1, user2)
-        }
+      if (!relTracker[i]) relTracker[i] = []
+      for (let n = 1; n <= 2; n++ ){
+        if (relTracker[i].length === 3) break
+        const a = i + n
+        const b = a >=users.length ? a - users.length : a
+        if (!relTracker[b]) relTracker[b] = []
+        if (relTracker[b].length === 3) break
+        relTracker[i].push(b)
+        relTracker[b].push(i)
+        const user1 = users[i]
+        const user2 = users[b]
+        console.log(i, b)
+        await createUsersWithConnections(session, user1, user2)
+       }
     }
     await session.close()
     return users

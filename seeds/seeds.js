@@ -27,7 +27,7 @@ const seed = async () =>{
     const users = await createUsers(driver)
     console.log("seeded users")
     // await createMultiples(driver, users)
-    // const chats = await createChats(driver, users)
+    const chats = await createChats(driver, users)
     // const messages = await createMessages(driver)
     // await seedConnected(driver, users)
     await closeDriver()
