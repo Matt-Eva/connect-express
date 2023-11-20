@@ -31,6 +31,10 @@ io.on("connection", async (socket) =>{
             messages.push([user, message])
         }
 
+        socket.join(chatId);
+
+        socket.emit('joined', `joined room ${chatId}`)
+
         socket.emit("load", messages)
     } catch(e) {
         console.error(e)
@@ -38,8 +42,13 @@ io.on("connection", async (socket) =>{
         await session.close()
     }
 
+    socket.on("disconnecting", () =>{
+        console.log(socket.rooms)
+    })
+
     socket.on("disconnect", (reason) =>{
         console.log(reason)
+        console.log(socket.rooms.size)
     })
 })
 
