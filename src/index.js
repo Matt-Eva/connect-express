@@ -1,39 +1,36 @@
 const { server, driver, io, app } = require("./config.js")
+const { v4 } = require("uuid")
+const uuid = v4
 
 server.listen(process.env.PORT, () =>{
     console.log(`Server running on ${process.env.PORT}`)
 })
 
 io.on("connection", async (socket) =>{
-    console.log("connecting socket")
-    console.log("userId", socket.request.session.userId)
-    console.log("chatId", socket.handshake.query.chatId)
-    // console.log("socketId", socket.id)
+    const chatId = socket.handshake.query.chatId
     const session = driver.session()
 
     if (!socket.request.session.userId) return socket.disconnect()
 
     try {
         const userId = socket.request.session.userId
-        const chatId = socket.handshake.query.chatId
         const query = `
             MATCH (:User {uId: $userId}) - [:PARTICIPATING] -> (c:Chat {uId: $chatId}) <- [:SENT_IN_CHAT] - (m:Message) <- [:SENT] - (u:User)
-            WHERE NOT u.uId = $userId
             RETURN u, m
+            ORDER BY m.date
         `
         const result = await session.executeRead(async tx => tx.run(query, {userId: userId, chatId: chatId}))
         if (result.records.length === 0) return socket.disconnect()
+
         const messages = []
         for (const record of result.records){
-            // console.log([record.get('u'), record.get('m')])
             const message = record.get('m').properties
             const user = record.get('u').properties
             messages.push([user, message])
         }
 
-        socket.join(chatId);
-
-        socket.emit('joined', `joined room ${chatId}`)
+        socket.join(chatId)
+        io.to(chatId).emit("joined", `joined room ${chatId}`)
 
         socket.emit("load", messages)
     } catch(e) {
@@ -41,6 +38,28 @@ io.on("connection", async (socket) =>{
     } finally {
         await session.close()
     }
+
+    socket.on("message", async (message) =>{
+        
+        const session = driver.session()
+
+        try{
+            const query = `
+                MATCH (user:User {uId: $userId}), (c:Chat {uId: $chatId})
+                CREATE (user) - [:SENT] -> (message:Message {uId: $uId, text: $text, date: $date, userId: $userId}) - [:SENT_IN_CHAT] ->(c)
+                RETURN user, message
+            `
+            const result = await session.executeWrite(async tx => tx.run(query, {userId: message.userId, uId: uuid(), text: message.text, date: Date.now(), chatId: message.chatId}))
+            const record = result.records[0]
+            const newMessage = [record.get('user').properties, record.get('message').properties]
+
+            io.to(chatId).emit("new-message", newMessage)
+        } catch(e){
+            console.error(e)
+        } finally {
+            await session.close()
+        }
+    })
 
     socket.on("disconnecting", () =>{
         console.log(socket.rooms)
@@ -65,8 +84,6 @@ app.post("/login", async (req, res) =>{
         req.session.authenticated = true
         req.session.userId = user.uId
 
-        console.log("login", req.session.id)
-
         res.status(200).send(user)
     } catch (e){
         console.error(e)
@@ -78,7 +95,6 @@ app.post("/login", async (req, res) =>{
 })
 
 app.get("/my-chats", async (req, res) =>{
-    // console.log("my chats", req.session.id, req.session.authenticated, req.session.userId)
     if (!req.session.authenticated) return res.status(401).send({error: "unauthorized"})
 
     const session = driver.session()
@@ -101,23 +117,6 @@ app.get("/my-chats", async (req, res) =>{
         console.error(e)
         res.status(500).send({error: "internal server error"})
     } finally {
-        await session.close()
-    }
-})
-
-app.get("/authorize-chat/:chatId", async (req, res) => {
-    if (!req.session.authenticated) return res.status(401).send({error: "unauthorized"})
-
-    const session = driver.session()
-    try {
-        const chatId = req.params.chatId
-        const userId = req.session.userId
-
-
-    } catch (e){
-        console.error(e)
-        res.status(500).send({error: "error fetching data"})
-    } finally{
         await session.close()
     }
 })
