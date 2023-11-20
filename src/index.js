@@ -10,7 +10,9 @@ io.on("connection", async (socket) =>{
     console.log("chatId", socket.handshake.query.chatId)
     // console.log("socketId", socket.id)
     const session = driver.session()
+
     if (!socket.request.session.userId) return socket.disconnect()
+
     try {
         const userId = socket.request.session.userId
         const chatId = socket.handshake.query.chatId
@@ -30,7 +32,6 @@ io.on("connection", async (socket) =>{
         }
 
         socket.emit("load", messages)
-
     } catch(e) {
         console.error(e)
     } finally {
