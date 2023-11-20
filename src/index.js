@@ -20,10 +20,10 @@ io.on("connection", async (socket) =>{
             RETURN u, m
         `
         const result = await session.executeRead(async tx => tx.run(query, {userId: userId, chatId: chatId}))
-        // if (result.records.length === 0) return socket.disconnect()
+        if (result.records.length === 0) return socket.disconnect()
         const messages = []
         for (const record of result.records){
-            console.log([record.get('u'), record.get('m')])
+            // console.log([record.get('u'), record.get('m')])
             const message = record.get('m').properties
             const user = record.get('u').properties
             messages.push([user, message])
@@ -36,6 +36,10 @@ io.on("connection", async (socket) =>{
     } finally {
         await session.close()
     }
+
+    socket.on("disconnect", (reason) =>{
+        console.log(reason)
+    })
 })
 
 app.post("/login", async (req, res) =>{
@@ -51,7 +55,7 @@ app.post("/login", async (req, res) =>{
         req.session.authenticated = true
         req.session.userId = user.uId
 
-        // console.log("login", req.session.id)
+        console.log("login", req.session.id)
 
         res.status(200).send(user)
     } catch (e){
