@@ -7,15 +7,11 @@ server.listen(process.env.PORT, () =>{
 })
 
 io.on("connection", async (socket) =>{
-    console.log(socket.request.session.user)
-    console.log(!socket.request.session.user)
 
     if (!socket.request.session.user) return socket.disconnect()
 
     const chatId = socket.handshake.query.chatId
     const userId = socket.request.session.user.uId
-    
-    console.log("reached")
 
     const session = driver.session()
 
@@ -109,7 +105,7 @@ app.get("/me", (req, res) =>{
     if (req.session.user){
         res.status(200).send(req.session.user)
     } else {
-        res.status(401)
+        res.status(401).send({error: "unauthorized"})
     }
 })
 
@@ -120,7 +116,7 @@ app.get("/my-chats", async (req, res) =>{
     try {
         const userId = req.session.user.uId
         const query = "MATCH (:User {uId: $userId}) - [:PARTICIPATING] -> (chat:Chat) <- [:PARTICIPATING] - (user:User) RETURN chat, user"
-        const result = await session.executeRead(async tx => tx.run(query, {userId: userId}))
+        const result = await session.executeRead(tx => tx.run(query, {userId: userId}))
         
         const chatHash = {}
 
@@ -133,6 +129,38 @@ app.get("/my-chats", async (req, res) =>{
 
         res.status(200).send(chatHash)
     } catch (e){
+        console.error(e)
+        res.status(500).send({error: "internal server error"})
+    } finally {
+        await session.close()
+    }
+})
+
+app.post("/new-chats", async(req, res) =>{
+
+})
+
+app.get("/my-connections", async(req, res) =>{
+    if (!req.session.user) return res.status(401)
+
+    const user = req.session.user
+    const session = driver.session()
+
+    try {
+        const query = `
+            MATCH (user:User {uId: $userId}) - [:CONNECTED] - (c:User)
+            RETURN c AS connection
+        `
+        const result = await session.executeRead(tx => tx.run(query, {userId: user.uId}))
+        
+        const connections = []
+
+        for (const record of result.records){
+            connections.push(record.get("connection").properties)
+        }
+
+        res.status(200).send(connections)
+    } catch(e) {
         console.error(e)
         res.status(500).send({error: "internal server error"})
     } finally {

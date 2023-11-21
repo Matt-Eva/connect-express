@@ -3,8 +3,6 @@ const {createUsers} = require('./node-seeds/userSeeds.js')
 const {createMultiples} = require('./testCreateMultiple.js')
 const {createChats} = require("./node-seeds/chatSeeds.js")
 const {createMessages} = require('./node-seeds/messageSeeds.js')
-const {seedConnected} = require('./relationship-seeds/connectedSeeds.js')
-
 
 const clearDatabase = async () =>{
     console.log("clearing")
@@ -26,12 +24,12 @@ const seed = async () =>{
     console.log("seeding")
     const users = await createUsers(driver)
     console.log("seeded users")
-    // await createMultiples(driver, users)
     console.log("seeding chats")
     const chats = await createChats(driver, users)
     console.log("chats seeded")
+    console.log("seeding messages")
     const messages = await createMessages(driver, users)
-    // await seedConnected(driver, users)
+    console.log("messages seeded")
     await closeDriver()
 }
 

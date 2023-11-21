@@ -7,7 +7,7 @@ const createChats = async (driver, users) =>{
         try{
             await session.executeWrite(async tx => {
                 const usersResults = await tx.run(
-                    'MATCH (:User {uId: $userId}) - [:CONNECTED] - (u:User) RETURN u AS connection', {userId: user.uId}
+                    'MATCH (:User {name: "Matt"}) - [:CONNECTED] - (u:User) RETURN u AS connection', {userId: user.uId}
                 )
 
                 const connections = [user]
