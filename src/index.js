@@ -22,7 +22,6 @@ io.on("connection", async (socket) =>{
             ORDER BY m.date
         `
         const result = await session.executeRead(async tx => tx.run(query, {userId: userId, chatId: chatId}))
-        if (result.records.length === 0) return socket.disconnect()
 
         const messages = []
         for (const record of result.records){
@@ -146,22 +145,33 @@ app.post("/new-chat", async(req, res) =>{
     try {
         const result = await session.executeWrite(async tx =>{
 
-            const nodes = await tx.run(`
+            const existingChat = await tx.run(`
                 MATCH (:User {uId: $userId}) -[:PARTICIPATING] ->(chat:Chat)
                 WITH chat, COLLECT {MATCH (p:User) -[:PARTICIPATING] ->(chat:Chat) RETURN (p.uId)} AS participants
                 WHERE all(participant IN participants WHERE participant IN $uIds)
                 RETURN chat
             `, {uIds: uIds, userId: req.session.user.uId})
-            console.log(nodes.records)
+            
+            if (existingChat.records.length !== 0){
+                return existingChat.records[0].get('chat').properties
+            }
 
-            // const existingChat = await tx.run(`
-            //     MATCH (c:Chat)
-            //     WHERE all(participant IN $participants WHERE (:User {uId: participant.uId}) - [:PARTICIPATING] -> (c))
-            //     RETURN c AS chat
-            // `, {participants: participants})
-            // console.log(existingChat.records)
+            const newChat = await tx.run(`
+                CREATE (c:Chat {uId: $chatId})
+                WITH c
+                UNWIND $uIds AS participantId
+                MATCH (u:User {uId: participantId})
+                CREATE (u) - [:PARTICIPATING] -> (c)
+                RETURN c AS chat
+            `, {uIds: uIds, userId: req.session.user.uId, chatId: uuid()})
+
+            return newChat.records[0].get("chat").properties
+
+            
         })
-        res.status(200)
+
+        console.log(result)
+        res.status(200).send(result)
     } catch(e) {
         console.error(e)
         res.status(500).send({error: "internal server error"})
