@@ -28,11 +28,11 @@ const createUserArray = () =>{
     }, 
     {
       uId: uuid(),
-      name: "CJ"
+      name: "Jay"
     }, 
     {
       uId: uuid(),
-      name: "Wills"
+      name: "Jay"
     }, 
     {
       uId: uuid(),

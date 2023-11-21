@@ -229,12 +229,17 @@ app.get("/search-connections/:name", async (req, res) =>{
             WHERE c.name STARTS WITH $name
             AND NOT (c) - [:CONNECTED] - (:User {uId: $userId})
             AND u <> c
-            RETURN DISTINCT c AS connection
+            RETURN DISTINCT c.uId AS id, c.name AS name, "2" AS degree
+            UNION
+            MATCH (c:User)
+            WHERE c.name STARTS WITH $name
+            RETURN DISTINCT c.uId AS id, c.name AS name, "3+" AS degree
         `
         const result = await session.executeRead(tx => tx.run(query, {name: name, userId: userId}))
         console.log(result.records)
         for(const record of result.records){
-            console.log(record.get('connection'))
+            console.log(record.get('name'))
+            console.log(record.get("degree"))
         }
 
         res.status(200)
