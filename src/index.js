@@ -7,13 +7,19 @@ server.listen(process.env.PORT, () =>{
 })
 
 io.on("connection", async (socket) =>{
+    console.log(socket.request.session.user)
+    console.log(!socket.request.session.user)
+
+    if (!socket.request.session.user) return socket.disconnect()
+
     const chatId = socket.handshake.query.chatId
+    const userId = socket.request.session.user.uId
+    
+    console.log("reached")
+
     const session = driver.session()
 
-    if (!socket.request.session.userId) return socket.disconnect()
-
     try {
-        const userId = socket.request.session.userId
         const query = `
             MATCH (:User {uId: $userId}) - [:PARTICIPATING] -> (c:Chat {uId: $chatId}) <- [:SENT_IN_CHAT] - (m:Message) <- [:SENT] - (u:User)
             RETURN u, m
@@ -28,6 +34,8 @@ io.on("connection", async (socket) =>{
             const user = record.get('u').properties
             messages.push([user, message])
         }
+
+        console.log(messages)
 
         socket.join(chatId)
         io.to(chatId).emit("joined", `joined room ${chatId}`)
@@ -62,12 +70,12 @@ io.on("connection", async (socket) =>{
     })
 
     socket.on("disconnecting", () =>{
-        console.log(socket.rooms)
+        // console.log(socket.rooms)
     })
 
     socket.on("disconnect", (reason) =>{
-        console.log(reason)
-        console.log(socket.rooms.size)
+        // console.log(reason)
+        // console.log(socket.rooms.size)
     })
 })
 
@@ -77,12 +85,12 @@ app.post("/login", async (req, res) =>{
     try {
         const query = 'MATCH (user:User {name: $name}) RETURN user'
 
-        const result = await session.executeRead( async tx => tx.run(query, {name: body.name}))
+        const result = await session.executeRead( async tx => tx.run(query, {name: body.username}))
 
         const user = result.records[0].get("user").properties
 
         req.session.authenticated = true
-        req.session.userId = user.uId
+        req.session.user = user
 
         res.status(200).send(user)
     } catch (e){
@@ -94,12 +102,16 @@ app.post("/login", async (req, res) =>{
     }
 })
 
+app.get("/me", async (req, res) =>{
+
+})
+
 app.get("/my-chats", async (req, res) =>{
     if (!req.session.authenticated) return res.status(401).send({error: "unauthorized"})
 
     const session = driver.session()
     try {
-        const userId = req.session.userId
+        const userId = req.session.user.uId
         const query = "MATCH (:User {uId: $userId}) - [:PARTICIPATING] -> (chat:Chat) <- [:PARTICIPATING] - (user:User) RETURN chat, user"
         const result = await session.executeRead(async tx => tx.run(query, {userId: userId}))
         
