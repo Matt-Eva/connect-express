@@ -4,8 +4,9 @@ const { faker } = require("@faker-js/faker")
 const createMessages = async (driver, users) =>{
     const session = driver.session()
 
-    for (const user of users){
-        const results = await session.executeWrite(async tx => {
+    for (let i=0; i <1; i++){
+        const user=users[0]
+        await session.executeWrite(async tx => {
             const chats = await tx.run(`
                 MATCH (user:User {uId: $uId}) - [:PARTICIPATING] -> (chat:Chat) RETURN user, chat
             `, user)
@@ -30,8 +31,6 @@ const createMessages = async (driver, users) =>{
 
             return messages
         })
-
-        console.log(results)
     }
   
     await session.close()

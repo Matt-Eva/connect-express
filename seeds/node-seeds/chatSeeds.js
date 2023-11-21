@@ -3,7 +3,8 @@ const { uuid} = require("../seedConfig.js")
 
 const createChats = async (driver, users) =>{
     const session = await driver.session()
-    for (const user of users){
+    for (let i = 0; i < 1; i++){
+        const user = users[i]
         try{
             await session.executeWrite(async tx => {
                 const usersResults = await tx.run(

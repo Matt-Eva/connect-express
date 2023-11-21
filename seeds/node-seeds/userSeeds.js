@@ -1,4 +1,5 @@
 const {uuid} = require("../seedConfig.js")
+const { faker } = require("@faker-js/faker")
 
 const createUsersWithConnections = async(session, user1, user2) =>{
   try {
@@ -19,47 +20,75 @@ const createUsersWithConnections = async(session, user1, user2) =>{
   }
 }
 
+const createUserArray = () =>{
+  const users = [
+    {
+      uId: uuid(),
+      name: "Matt"
+    }, 
+    {
+      uId: uuid(),
+      name: "CJ"
+    }, 
+    {
+      uId: uuid(),
+      name: "Wills"
+    }, 
+    {
+      uId: uuid(),
+      name: "Tom"
+    }, 
+    {
+      uId: uuid(),
+      name: "Nick"
+    }, 
+    {
+      uId: uuid(),
+      name: "Jay"
+    }, 
+    {
+      uId: uuid(),
+      name: "Mustafa"
+    }, 
+    {
+      uId: uuid(),
+      name: "Jim"
+    }, 
+    {
+      uId: uuid(),
+      name: "Liz"
+    },
+    {
+      uId: uuid(),
+      name: "Laura"
+    }, 
+    {
+      uId: uuid(),
+      name: "Sam"
+    }
+  ]
+  for(let i = 0; i < 20; i ++){
+    const user = {
+      uId: uuid(),
+      name: faker.person.firstName()
+    }
+    users.push(user)
+  }
+  return users
+}
+
 const createUsers = async (driver) =>{
     const session = driver.session()
-    const users = [
-      {
-        uId: uuid(),
-        name: "Matt"
-      }, 
-      {
-        uId: uuid(),
-        name: "CJ"
-      }, 
-      {
-        uId: uuid(),
-        name: "Wills"
-      }, 
-      {
-        uId: uuid(),
-        name: "Tom"
-      }, 
-      {
-        uId: uuid(),
-        name: "Nick"
-      }, 
-      {
-        uId: uuid(),
-        name: "Jay"
-      }, 
-      {
-        uId: uuid(),
-        name: "Mustafa"
-      }
-    ]
+    const users = createUserArray()
     const relTracker = {}
     for (let i = 0; i < users.length; i++){
       if (!relTracker[i]) relTracker[i] = []
-      for (let n = 1; n <= 2; n++ ){
-        if (relTracker[i].length === 3) break
+      for (let n = 1; n <= 4; n++ ){
+        if (relTracker[i].length === 5) break
         const a = i + n
         const b = a >=users.length ? a - users.length : a
         if (!relTracker[b]) relTracker[b] = []
-        if (relTracker[b].length === 3) break
+        if (relTracker[b].length === 5) break
         relTracker[i].push(b)
         relTracker[b].push(i)
         const user1 = users[i]

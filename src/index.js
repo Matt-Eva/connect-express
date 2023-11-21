@@ -220,18 +220,21 @@ app.get("/search-connections/:name", async (req, res) =>{
     
     const name = req.params.name
     const userId = req.session.user.uId
+    console.log(userId)
     const session = driver.session()
-
+    console.log(req.params.name)
     try {
         const query = `
-            MATCH (:User {uId: $userId}) - [:CONNECTED] - (:User) - [:CONNECTED] -(u:User)
-            WHERE u.name STARTS WITH $name
-            RETURN DISTINCT u AS user
+            MATCH (u:User {uId: $userId}) - [:CONNECTED] - (:User) - [:CONNECTED] -(c:User)
+            WHERE c.name STARTS WITH $name
+            AND NOT (c) - [:CONNECTED] - (:User {uId: $userId})
+            AND u <> c
+            RETURN DISTINCT c AS connection
         `
         const result = await session.executeRead(tx => tx.run(query, {name: name, userId: userId}))
-
+        console.log(result.records)
         for(const record of result.records){
-            console.log(record.get('user'))
+            console.log(record.get('connection'))
         }
 
         res.status(200)
