@@ -136,7 +136,9 @@ app.get("/my-chats", async (req, res) =>{
     }
 })
 
-app.post("/new-chats", async(req, res) =>{
+app.post("/new-chat", async(req, res) =>{
+    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
+    const participants = req.body.participants
 
 })
 
