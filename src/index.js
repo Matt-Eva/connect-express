@@ -138,12 +138,40 @@ app.get("/my-chats", async (req, res) =>{
 
 app.post("/new-chat", async(req, res) =>{
     if (!req.session.user) return res.status(401).send({error: "unauthorized"})
-    const participants = req.body.participants
+    
+    const participants = [...req.body.participants, req.session.user]
+    const uIds = participants.map(participant => participant.uId)
 
+    const session = driver.session()
+    try {
+        const result = await session.executeWrite(async tx =>{
+
+            const nodes = await tx.run(`
+                MATCH (:User {uId: $userId}) -[:PARTICIPATING] ->(chat:Chat)
+                WITH chat, COLLECT {MATCH (p:User) -[:PARTICIPATING] ->(chat:Chat) RETURN (p.uId)} AS participants
+                WHERE all(participant IN participants WHERE participant IN $uIds)
+                RETURN chat
+            `, {uIds: uIds, userId: req.session.user.uId})
+            console.log(nodes.records)
+
+            // const existingChat = await tx.run(`
+            //     MATCH (c:Chat)
+            //     WHERE all(participant IN $participants WHERE (:User {uId: participant.uId}) - [:PARTICIPATING] -> (c))
+            //     RETURN c AS chat
+            // `, {participants: participants})
+            // console.log(existingChat.records)
+        })
+        res.status(200)
+    } catch(e) {
+        console.error(e)
+        res.status(500).send({error: "internal server error"})
+    } finally {
+        await session.close()
+    }
 })
 
 app.get("/my-connections", async(req, res) =>{
-    if (!req.session.user) return res.status(401)
+    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
 
     const user = req.session.user
     const session = driver.session()
