@@ -35,8 +35,6 @@ io.on("connection", async (socket) =>{
             messages.push([user, message])
         }
 
-        console.log(messages)
-
         socket.join(chatId)
         io.to(chatId).emit("joined", `joined room ${chatId}`)
 
@@ -103,7 +101,11 @@ app.post("/login", async (req, res) =>{
 })
 
 app.get("/me", async (req, res) =>{
-
+    if (req.session.user){
+        res.status(200).send(req.session.user)
+    } else {
+        res.status(401)
+    }
 })
 
 app.get("/my-chats", async (req, res) =>{
