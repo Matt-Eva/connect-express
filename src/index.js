@@ -97,7 +97,7 @@ app.post("/login", async (req, res) =>{
 
 app.delete("/logout", async (req, res) =>{
     req.session.user = false
-    res.send(200)
+    res.status(200)
 })
 
 app.get("/me", (req, res) =>{
