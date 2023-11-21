@@ -100,7 +100,12 @@ app.post("/login", async (req, res) =>{
     }
 })
 
-app.get("/me", async (req, res) =>{
+app.delete("/logout", async (req, res) =>{
+    req.session.user = false
+    res.send(200)
+})
+
+app.get("/me", (req, res) =>{
     if (req.session.user){
         res.status(200).send(req.session.user)
     } else {
