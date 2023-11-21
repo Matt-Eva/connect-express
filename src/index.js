@@ -96,8 +96,15 @@ app.post("/login", async (req, res) =>{
 })
 
 app.delete("/logout", async (req, res) =>{
-    req.session.user = false
-    res.status(200)
+    console.log("logging out")
+    req.session.destroy(err =>{
+        console.log("destroying session")
+        if (err){
+            res.status(500).end()
+        } else {
+            res.status(204).end()
+        }
+    })
 })
 
 app.get("/me", (req, res) =>{
@@ -206,4 +213,31 @@ app.get("/my-connections", async(req, res) =>{
     } finally {
         await session.close()
     }
+})
+
+app.get("/search-connections/:name", async (req, res) =>{
+    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
+    
+    const name = req.params.name
+    const userId = req.session.user.uId
+    const session = driver.session()
+
+    try {
+        const query = `
+            MATCH (:User {uId: $userId}) - [:CONNECTED] - (:User) - [:CONNECTED] -(u:User)
+            WHERE u.name STARTS WITH $name
+            RETURN DISTINCT u AS user
+        `
+        const result = await session.executeRead(tx => tx.run(query, {name: name, userId: userId}))
+
+        for(const record of result.records){
+            console.log(record.get('user'))
+        }
+
+        res.status(200)
+    } catch(e) {
+        console.error(e)
+        res.status(500).send({error: "internal server error"})
+    }
+
 })
