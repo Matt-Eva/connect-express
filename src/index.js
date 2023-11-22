@@ -222,27 +222,32 @@ app.get("/search-connections/:name", async (req, res) =>{
     const userId = req.session.user.uId
     console.log(userId)
     const session = driver.session()
-    console.log(req.params.name)
+
     try {
         const query = `
             MATCH (u:User {uId: $userId}) - [:CONNECTED] - (:User) - [:CONNECTED] -(c:User)
             WHERE c.name STARTS WITH $name
             AND NOT (c) - [:CONNECTED] - (:User {uId: $userId})
             AND u <> c
-            RETURN DISTINCT c.uId AS id, c.name AS name, "2" AS degree
+            RETURN DISTINCT c.uId AS uId, c.name AS name
             UNION
             MATCH (c:User)
             WHERE c.name STARTS WITH $name
-            RETURN DISTINCT c.uId AS id, c.name AS name, "3+" AS degree
+            AND c.uId <> $userId
+            RETURN c.uId AS uId, c.name AS name
         `
         const result = await session.executeRead(tx => tx.run(query, {name: name, userId: userId}))
-        console.log(result.records)
+        
+        const searchResults = []
         for(const record of result.records){
-            console.log(record.get('name'))
-            console.log(record.get("degree"))
+            const user = {
+                uId: record.get("uId"),
+                name: record.get("name")
+            }
+            searchResults.push(user)
         }
 
-        res.status(200)
+        res.status(200).send(searchResults)
     } catch(e) {
         console.error(e)
         res.status(500).send({error: "internal server error"})
