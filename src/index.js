@@ -74,23 +74,36 @@ io.on("connection", async (socket) =>{
 })
 
 app.post("/login", async (req, res) =>{
-    const body = req.body
+    const {email, password} = req.body
     const session = driver.session()
     try {
-        const query = 'MATCH (user:User {firstName: $name}) RETURN user'
+        const query = 'MATCH (user:User {email: $email}) RETURN user'
 
-        const result = await session.executeRead( async tx => tx.run(query, {name: body.name}))
+        const result = await session.executeRead( async tx => tx.run(query, {email: email}))
 
         const user = result.records[0].get("user").properties
 
-        req.session.authenticated = true
-        req.session.user = user
+        const authenticated = await argon2.verify(user.password, password)
+        
+        if(authenticated) {
+            req.session.user = {
+                name: user.name,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                profileImg: user.profileImg,
+                uId: user.uId
+            }
+            res.status(200).send(req.session.user)
+        } else {
+            res.status(401).send({error: "unauthorized"})
+        }
 
-        res.status(200).send(user)
+        
     } catch (e){
         console.error(e)
 
-        res.status(500).send({error: true})
+        res.status(500).send({error: "internal server error"})
     } finally {
         await session.close()
     }
