@@ -141,7 +141,8 @@ app.post("/new-account", async (req, res) => {
             }
 
             const newUser = await tx.run(`
-            CREATE (u:User {email: $email, password: $password, name: $name, firstName: $firstName, lastName: $lastName, profileImg: $profileImg, uId: $uId}) RETURN u.email AS email, u.name AS name, u.firstName AS firstName, u.lastName AS lastName, u.profileImg AS profileImg, u.uId AS uId
+            CREATE (u:User {email: $email, password: $password, name: $name, firstName: $firstName, lastName: $lastName, profileImg: $profileImg, uId: $uId})
+            RETURN u.email AS email, u.name AS name, u.firstName AS firstName, u.lastName AS lastName, u.profileImg AS profileImg, u.uId AS uId
             `, {
                 email: req.body.email,
                 password: password,
@@ -234,8 +235,6 @@ app.post("/new-chat", async(req, res) =>{
             `, {uIds: uIds, userId: req.session.user.uId, chatId: uuid()})
 
             return newChat.records[0].get("chat").properties
-
-            
         })
 
         console.log(result)
@@ -318,6 +317,8 @@ app.get("/search-connections/:name", async (req, res) =>{
 })
 
 app.post("/new-connection", async (req, res) =>{
+    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
+
     const {name, uId} = req.body
     const userId = req.session.user.uId
     const session = driver.session()
@@ -335,6 +336,34 @@ app.post("/new-connection", async (req, res) =>{
     } catch(e){
         console.error(e)
         res.status(500).send({error: "internal server error"})
+    } finally {
+        await session.close()
+    }
+})
+
+app.get("/user/:id", async (req, res) =>{
+    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
+
+    const selfId = req.session.user.uId
+    const userId = req.params.id
+    const session = driver.session()
+    try {
+        const query = `
+            MATCH (u:User {uId: $userId}), (s:User {uId: $selfId})
+            RETURN u.profileImg AS profileImg, u.name AS name, exists((u) - [:CONNECTED] - (s)) AS connected`
+        const result = await session.executeRead(tx => tx.run(query, {userId: userId, selfId: selfId}))
+        if (result.records.length !== 0){
+            const user = {
+                profileImg: result.records[0].get("profileImg"),
+                name: result.records[0].get("name"),
+                connected: result.records[0].get("connected")
+             }
+            res.status(200).send(user)
+        } else{
+            throw new Error("user not found")
+        }
+    } catch (e) {
+        console.error(e)
     } finally {
         await session.close()
     }
