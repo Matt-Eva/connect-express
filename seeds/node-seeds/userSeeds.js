@@ -91,9 +91,9 @@ const createUserArray = () =>{
     }, 
     {
       uId: uuid(),
-      name: "Nick Christensen",
+      name: "Nick Nonifont",
       firstName: "Nick",
-      lastName: "Christensen",
+      lastName: "Nonifont",
       email: "nick@email.com",
       password: "test",
       profileImg: faker.image.avatar()
