@@ -130,7 +130,7 @@ app.get("/me", (req, res) =>{
 })
 
 app.get("/my-chats", async (req, res) =>{
-    if (!req.session.authenticated) return res.status(401).send({error: "unauthorized"})
+    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
 
     const session = driver.session()
     try {
