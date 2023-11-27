@@ -227,13 +227,14 @@ app.get("/search-connections/:name", async (req, res) =>{
         const query = `
             MATCH (u:User {uId: $userId}) - [:CONNECTED] - (:User) - [:CONNECTED] -(c:User)
             WHERE c.name STARTS WITH $name
-            AND NOT (c) - [:CONNECTED] - (:User {uId: $userId})
+            AND NOT (c) - [:CONNECTED] - (u)
             AND u <> c
-            RETURN DISTINCT c.uId AS uId, c.name AS name
+            RETURN c.uId AS uId, c.name AS name
             UNION
-            MATCH (c:User)
+            MATCH (c:User), (u:User {uId: $userId})
             WHERE c.name STARTS WITH $name
-            AND c.uId <> $userId
+            AND NOT (c) - [:CONNECTED] - (u)
+            AND c <> u
             RETURN c.uId AS uId, c.name AS name
         `
         const result = await session.executeRead(tx => tx.run(query, {name: name, userId: userId}))
@@ -253,4 +254,27 @@ app.get("/search-connections/:name", async (req, res) =>{
         res.status(500).send({error: "internal server error"})
     }
 
+})
+
+app.post("/new-connection", async (req, res) =>{
+    const {name, uId} = req.body
+    const userId = req.session.user.uId
+    const session = driver.session()
+    
+    try {
+        const query = `
+            MATCH (u:User {uId: $userId}), (c:User {uId: $connectionId})
+            MERGE (u) - [connected:CONNECTED] - (c)
+            RETURN connected
+        `
+        const result = await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: uId}))
+        console.log(result.records[0])
+
+        res.status(201).end()
+    } catch(e){
+        console.error(e)
+        res.status(500).send({error: "internal server error"})
+    } finally {
+        await session.close()
+    }
 })
