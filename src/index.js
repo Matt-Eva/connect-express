@@ -77,9 +77,9 @@ app.post("/login", async (req, res) =>{
     const body = req.body
     const session = driver.session()
     try {
-        const query = 'MATCH (user:User {name: $name}) RETURN user'
+        const query = 'MATCH (user:User {firstName: $name}) RETURN user'
 
-        const result = await session.executeRead( async tx => tx.run(query, {name: body.username}))
+        const result = await session.executeRead( async tx => tx.run(query, {name: body.name}))
 
         const user = result.records[0].get("user").properties
 
