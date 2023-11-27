@@ -1,4 +1,5 @@
 const { server, driver, io, app } = require("./config.js")
+const argon2 = require('argon2')
 const { v4 } = require("uuid")
 const uuid = v4
 
