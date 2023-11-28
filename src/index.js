@@ -314,7 +314,6 @@ app.get("/search-connections/:name", async (req, res) =>{
         console.error(e)
         res.status(500).send({error: "internal server error"})
     }
-
 })
 
 app.post("/invite-connection", async (req, res) =>{
@@ -336,6 +335,32 @@ app.post("/invite-connection", async (req, res) =>{
     } catch(e){
         console.error(e)
         res.status(500).send({error: "internal server error"})
+    } finally {
+        await session.close()
+    }
+})
+
+app.post("/accept-invitation", async (req, res) =>{
+    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
+
+    const {connectionId} = req.body
+    const userId = req.session.user.uId
+    const session = driver.session()
+    try {
+        const query = ` 
+            MATCH (s:User {uId: $userId}) - [i:INVITED] - (u:User {uId: $connectionId})
+            DELETE i
+            MERGE (s) - [c:CONNECTED] -> (u)
+            RETURN c AS connected
+        `
+        const result = await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: connectionId}))
+        
+        console.log(result.records[0].get("connected"))
+
+        res.status(201).end()
+    } catch (e) {
+        console.error(e)
+        res.status(500).send({message: "internal server error"})
     } finally {
         await session.close()
     }
