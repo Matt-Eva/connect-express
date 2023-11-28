@@ -317,20 +317,20 @@ app.get("/search-connections/:name", async (req, res) =>{
 
 })
 
-app.post("/new-connection", async (req, res) =>{
+app.post("/invite-connection", async (req, res) =>{
     if (!req.session.user) return res.status(401).send({error: "unauthorized"})
 
-    const {name, uId} = req.body
+    const {connectionId} = req.body
     const userId = req.session.user.uId
     const session = driver.session()
     
     try {
         const query = `
             MATCH (u:User {uId: $userId}), (c:User {uId: $connectionId})
-            MERGE (u) - [connected:CONNECTED] - (c)
-            RETURN connected
+            MERGE (u) - [i:INVITED] -> (c)
+            RETURN i
         `
-        await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: uId}))
+        await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: connectionId}))
 
         res.status(201).end()
     } catch(e){
@@ -349,14 +349,16 @@ app.get("/user/:id", async (req, res) =>{
     const session = driver.session()
     try {
         const query = `
-            MATCH (u:User {uId: $userId}), (s:User {uId: $selfId})
-            RETURN u.profileImg AS profileImg, u.name AS name, exists((u) - [:CONNECTED] - (s)) AS connected`
+            MATCH (s:User {uId: $selfId}), (u:User {uId: $userId}) 
+            RETURN u.profileImg AS profileImg, u.name AS name, exists((s) - [:CONNECTED] - (u)) AS connected, exists((s) - [:INVITED] -> (u)) AS pending, exists((s) <- [:INVITED] - (u)) AS invited`
         const result = await session.executeRead(tx => tx.run(query, {userId: userId, selfId: selfId}))
         if (result.records.length !== 0){
             const user = {
                 profileImg: result.records[0].get("profileImg"),
                 name: result.records[0].get("name"),
                 connected: result.records[0].get("connected"),
+                invited: result.records[0].get("invited"),
+                pending: result.records[0].get("pending"),
                 uId: userId
              }
             res.status(200).send(user)
