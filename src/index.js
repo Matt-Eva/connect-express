@@ -207,9 +207,11 @@ app.get("/my-chats", async (req, res) =>{
 app.post("/new-chat", async(req, res) =>{
     if (!req.session.user) return res.status(401).send({error: "unauthorized"})
     
+    console.log(req.body.participants)
     const participants = [...req.body.participants, req.session.user]
     const uIds = participants.map(participant => participant.uId)
-
+    console.log(req.session.user.uId)
+    console.log(uIds)
     const session = driver.session()
     try {
         const result = await session.executeWrite(async tx =>{
@@ -218,10 +220,11 @@ app.post("/new-chat", async(req, res) =>{
                 MATCH (:User {uId: $userId}) -[:PARTICIPATING] ->(chat:Chat)
                 WITH chat, COLLECT {MATCH (p:User) -[:PARTICIPATING] ->(chat:Chat) RETURN (p.uId)} AS participants
                 WHERE all(participant IN participants WHERE participant IN $uIds)
-                RETURN chat
+                RETURN chat, participants
             `, {uIds: uIds, userId: req.session.user.uId})
             
             if (existingChat.records.length !== 0){
+                console.log(existingChat.records[0].get('chat').properties, existingChat.records[0].get('participants'))
                 return existingChat.records[0].get('chat').properties
             }
 
@@ -236,8 +239,6 @@ app.post("/new-chat", async(req, res) =>{
 
             return newChat.records[0].get("chat").properties
         })
-
-        console.log(result)
         res.status(200).send(result)
     } catch(e) {
         console.error(e)
@@ -329,8 +330,7 @@ app.post("/new-connection", async (req, res) =>{
             MERGE (u) - [connected:CONNECTED] - (c)
             RETURN connected
         `
-        const result = await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: uId}))
-        console.log(result.records[0])
+        await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: uId}))
 
         res.status(201).end()
     } catch(e){
@@ -356,7 +356,8 @@ app.get("/user/:id", async (req, res) =>{
             const user = {
                 profileImg: result.records[0].get("profileImg"),
                 name: result.records[0].get("name"),
-                connected: result.records[0].get("connected")
+                connected: result.records[0].get("connected"),
+                uId: userId
              }
             res.status(200).send(user)
         } else{
