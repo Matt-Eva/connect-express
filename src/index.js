@@ -372,7 +372,7 @@ app.post("/invite-connection", async (req, res) =>{
 })
 
 app.post("/accept-invitation", async (req, res) =>{
-    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
+    if (!req.session.user) return res.status(401).send({message: "unauthorized"})
 
     const {connectionId} = req.body
     const userId = req.session.user.uId
