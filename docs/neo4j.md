@@ -9,11 +9,13 @@ We currently have 3 Node types
 
 And 4 Relationship types
 
-1. User - User: CONNECTED
-2. User - User: INVITED
-2. User - Chat: PARTICIPATING_IN_CHAT
-3. User - Message: SENT
-4. Message - Chat: SENT_IN_CHAT
+- User - User: CONNECTED
+- User - User: INVITED
+- User - User: IGNORED
+- User - User: BLOCKED
+- User - Chat: PARTICIPATING
+- User - Message: SENT
+- Message - Chat: SENT_IN_CHAT
 
 
 ## Indexes

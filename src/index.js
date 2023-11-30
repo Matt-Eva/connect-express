@@ -285,6 +285,7 @@ app.get("/my-invitations", async(req, res) =>{
     try{
         const query = `
             MATCH (s:User {uId: $userId}) <- [:INVITED] - (u:User)
+            WHERE NOT (s) - [:IGNORED] -> (u)
             RETURN u.name AS name, u.profileImg AS profileImg, u.uId AS uId
         `
         const result = await session.executeRead(tx => tx.run(query, {userId: userId}))
@@ -320,14 +321,17 @@ app.get("/search-connections/:name", async (req, res) =>{
             MATCH (u:User {uId: $userId}) - [:CONNECTED] - (:User) - [:CONNECTED] -(c:User)
             WHERE c.name STARTS WITH $name
             AND NOT (c) - [:CONNECTED] - (u)
+            AND NOT (c) - [:BLOCKED] - (u)
             AND u <> c
             RETURN c.uId AS uId, c.name AS name
             UNION
             MATCH (c:User), (u:User {uId: $userId})
             WHERE c.name STARTS WITH $name
             AND NOT (c) - [:CONNECTED] - (u)
+            AND NOT (c) - [:BLOCKED] - (u)
             AND c <> u
-            RETURN c.uId AS uId, c.name AS name
+            RETURN c.uId AS uId, c.name AS name 
+            LIMIT 50
         `
         const result = await session.executeRead(tx => tx.run(query, {name: name, userId: userId}))
         
@@ -379,14 +383,37 @@ app.post("/accept-invitation", async (req, res) =>{
     const session = driver.session()
     try {
         const query = ` 
-            MATCH (s:User {uId: $userId}) - [i:INVITED] - (u:User {uId: $connectionId})
-            DELETE i
+            MATCH (s:User {uId: $userId}) - [in:INVITED] - (u:User {uId: $connectionId})
+            MATCH (s) - [ig:IGNORED] - (u)
+            DELETE in, ig
             MERGE (s) - [c:CONNECTED] -> (u)
             RETURN c AS connected
         `
-        const result = await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: connectionId}))
+        await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: connectionId}))
 
-        console.log(result.records[0].get("connected"))
+        res.status(201).end()
+    } catch (e) {
+        console.error(e)
+        res.status(500).send({message: "internal server error"})
+    } finally {
+        await session.close()
+    }
+})
+
+app.post("/ignore-invitation", async (req, res) =>{
+    if (!req.session.user) return res.status(401).send({message: "unauthorized"})
+
+    const {connectionId} = req.body
+    const selfId = req.session.user.uId
+    const session = driver.session()
+    try {
+        const query = `
+            MATCH (s:User {uId: $selfId}) <- [:INVITED] - (u:User {uId: $connectionId})
+            MERGE (s) - [i:IGNORED] -> (u)
+            RETURN i
+        `
+        const result = await session.executeWrite(tx => tx.run(query, {selfId, connectionId}))
+        console.log(result.records[0].get("i"))
 
         res.status(201).end()
     } catch (e) {
@@ -406,7 +433,8 @@ app.get("/user/:id", async (req, res) =>{
     try {
         const query = `
             MATCH (s:User {uId: $selfId}), (u:User {uId: $userId}) 
-            RETURN u.profileImg AS profileImg, u.name AS name, exists((s) - [:CONNECTED] - (u)) AS connected, exists((s) - [:INVITED] -> (u)) AS pending, exists((s) <- [:INVITED] - (u)) AS invited`
+            WHERE NOT (s) <- [:BLOCKED] - (u)
+            RETURN u.profileImg AS profileImg, u.name AS name, exists((s) - [:CONNECTED] - (u)) AS connected, exists((s) - [:INVITED] -> (u)) AS pending, exists((s) <- [:INVITED] - (u)) AS invited, exists((s) - [:BLOCKED] -> (u)) AS blocked, exists((s) - [:IGNORED] -> (u)) AS ignored`
         const result = await session.executeRead(tx => tx.run(query, {userId: userId, selfId: selfId}))
         if (result.records.length !== 0){
             const user = {
@@ -415,14 +443,18 @@ app.get("/user/:id", async (req, res) =>{
                 connected: result.records[0].get("connected"),
                 invited: result.records[0].get("invited"),
                 pending: result.records[0].get("pending"),
+                blocked: result.records[0].get("blocked"),
+                ignored: result.records[0].get("ignored"),
                 uId: userId
              }
+
             res.status(200).send(user)
         } else{
-            throw new Error("user not found")
+            res.status(404).send({message: "user not found"})
         }
     } catch (e) {
         console.error(e)
+        res.status(500).send({message: "internal server error"})
     } finally {
         await session.close()
     }
