@@ -415,16 +415,13 @@ app.post("/accept-invitation", async (req, res) =>{
     try {
         const query = ` 
             MATCH (s:User {uId: $userId}) - [in:INVITED] - (u:User {uId: $connectionId})
+            OPTIONAL MATCH (s) - [ig:IGNORED] - (u)
+            DELETE in, ig
             MERGE (s) - [c:CONNECTED] -> (u)
-            WITH s, u, in
-            DELETE in
-            WITH s, u
-            MATCH (s) - [ig:IGNORED] - (u)
-            DELETE ig
             RETURN c AS connected
         `
         const result = await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: connectionId}))
-        console.log(result.records)
+        
         if (result.records.length !== 0){
             res.status(201).end()
         } else {
