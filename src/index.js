@@ -290,14 +290,14 @@ app.get("/search-connections/:name", async (req, res) =>{
             AND NOT (c) - [:CONNECTED] - (u)
             AND NOT (c) - [:BLOCKED] - (u)
             AND u <> c
-            RETURN c.uId AS uId, c.name AS name, exists((u) - [:INVITED] -> (c)) AS pending
+            RETURN c.uId AS uId, c.name AS name, exists((u) - [:INVITED] -> (c)) AS pending, exists((u) <- [:INVITED] -(c)) AS invited
             UNION
             MATCH (c:User), (u:User {uId: $userId})
             WHERE c.name STARTS WITH $name
             AND NOT (c) - [:CONNECTED] - (u)
             AND NOT (c) - [:BLOCKED] - (u)
             AND c <> u
-            RETURN c.uId AS uId, c.name AS name, exists((u) - [:INVITED] -> (c)) AS pending
+            RETURN c.uId AS uId, c.name AS name, exists((u) - [:INVITED] -> (c)) AS pending, exists((u) <- [:INVITED] -(c)) AS invited
             LIMIT 50
         `
         const result = await session.executeRead(tx => tx.run(query, {name: name, userId: userId}))
@@ -307,7 +307,8 @@ app.get("/search-connections/:name", async (req, res) =>{
             const user = {
                 uId: record.get("uId"),
                 name: record.get("name"),
-                pending: record.get("pending")
+                pending: record.get("pending"),
+                invited: record.get("invited")
             }
             searchResults.push(user)
         }
@@ -368,6 +369,8 @@ app.get("/my-invitations", async(req, res) =>{
             }
         })
 
+        console.log(invitations)
+
         res.status(200).send(invitations)
 
     } catch (e){
@@ -408,17 +411,25 @@ app.post("/accept-invitation", async (req, res) =>{
     const {connectionId} = req.body
     const userId = req.session.user.uId
     const session = driver.session()
+    console.log(connectionId)
     try {
         const query = ` 
             MATCH (s:User {uId: $userId}) - [in:INVITED] - (u:User {uId: $connectionId})
-            MATCH (s) - [ig:IGNORED] - (u)
-            DELETE in, ig
             MERGE (s) - [c:CONNECTED] -> (u)
+            WITH s, u, in
+            DELETE in
+            WITH s, u
+            MATCH (s) - [ig:IGNORED] - (u)
+            DELETE ig
             RETURN c AS connected
         `
-        await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: connectionId}))
-
-        res.status(201).end()
+        const result = await session.executeWrite(tx => tx.run(query, {userId: userId, connectionId: connectionId}))
+        console.log(result.records)
+        if (result.records.length !== 0){
+            res.status(201).end()
+        } else {
+            res.status(422).end()
+        }
     } catch (e) {
         console.error(e)
         res.status(500).send({message: "internal server error"})
