@@ -490,8 +490,32 @@ app.post("/block-user", async (req, res) => {
     }
 })
 
-app.delete("/unblock-user", async (req, res) =>{
+app.delete("/unblock-user/:userId", async (req, res) =>{
     if (!req.session.user) return res.status(401).send({message: "unauthorized"})
+
+    const userId = req.params.userId
+    const selfId = req.session.user.uId
+    const session = driver.session()
+
+    try {
+        const query= `
+            MATCH (s:User {uId: $selfId}) - [b:BLOCKED] -> (u:User {uId: $userId})
+            DELETE b
+            RETURN exists((s) - [:BLOCKED] -> (u)) AS blocked
+        `
+        const result = await session.executeWrite(tx => tx.run(query, {selfId, userId}))
+        
+        if(result.records.length !== 0 && result.records[0].get("blocked") === false){
+            res.status(202).end()
+        } else {
+            res.status(422).end()
+        }
+    } catch (e) {
+        console.error(e)
+        res.status(500).send({message: "internal server error"})
+    } finally {
+        await session.close()
+    }
 })
 
 app.get("/user/:id", async (req, res) =>{
