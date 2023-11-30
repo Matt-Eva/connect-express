@@ -276,44 +276,11 @@ app.get("/my-connections", async(req, res) =>{
     }
 })
 
-app.get("/my-invitations", async(req, res) =>{
-    if (!req.session.user) return res.status(401).send({message: "unauthorized"})
-    
-    const userId = req.session.user.uId
-    const session = driver.session()
-
-    try{
-        const query = `
-            MATCH (s:User {uId: $userId}) <- [:INVITED] - (u:User)
-            WHERE NOT (s) - [:IGNORED] -> (u)
-            RETURN u.name AS name, u.profileImg AS profileImg, u.uId AS uId
-        `
-        const result = await session.executeRead(tx => tx.run(query, {userId: userId}))
-
-        const invitations = result.records.map( record =>{
-            return {
-                name: record.get("name"),
-                profileImg: record.get("profileImg"),
-                uId: record.get("uId")
-            }
-        })
-
-        res.status(200).send(invitations)
-
-    } catch (e){
-        console.error(e)
-        res.status(500).send({message: "internal server error"})
-    } finally{
-        await session.close()
-    }
-})
-
 app.get("/search-connections/:name", async (req, res) =>{
     if (!req.session.user) return res.status(401).send({error: "unauthorized"})
     
     const name = req.params.name
     const userId = req.session.user.uId
-    console.log(userId)
     const session = driver.session()
 
     try {
@@ -349,6 +316,65 @@ app.get("/search-connections/:name", async (req, res) =>{
     } catch(e) {
         console.error(e)
         res.status(500).send({error: "internal server error"})
+    } finally {
+        await session.close()
+    }
+})
+
+app.delete("/delete-connection/:connectionId", async (req, res) =>{
+    if (!req.session.user) return res.status(401).send({message: "unauthorized"})
+    const connectionId = req.params.connectionId
+    const selfId = req.session.user.uId
+    const session = driver.session()
+
+    try {
+        const query = `
+            MATCH (s:User {uId: $selfId}) - [c:CONNECTED] - (u:User {uId: $connectionId})
+            DELETE c
+            RETURN exists((s) - [:CONNECTED] -(u)) AS connected
+        `
+        const result = await session.executeWrite(tx => tx.run(query, {selfId, connectionId}))
+
+        if(!result.records[0].get("connected")){
+            res.status(202).end()
+        }
+    } catch(e) {
+        console.error(e)
+        res.status(500).send({message: "internal server error"})
+    } finally {
+        await session.close()
+    }
+})
+
+app.get("/my-invitations", async(req, res) =>{
+    if (!req.session.user) return res.status(401).send({message: "unauthorized"})
+    
+    const userId = req.session.user.uId
+    const session = driver.session()
+
+    try{
+        const query = `
+            MATCH (s:User {uId: $userId}) <- [:INVITED] - (u:User)
+            WHERE NOT (s) - [:IGNORED] -> (u)
+            RETURN u.name AS name, u.profileImg AS profileImg, u.uId AS uId
+        `
+        const result = await session.executeRead(tx => tx.run(query, {userId: userId}))
+
+        const invitations = result.records.map( record =>{
+            return {
+                name: record.get("name"),
+                profileImg: record.get("profileImg"),
+                uId: record.get("uId")
+            }
+        })
+
+        res.status(200).send(invitations)
+
+    } catch (e){
+        console.error(e)
+        res.status(500).send({message: "internal server error"})
+    } finally{
+        await session.close()
     }
 })
 
