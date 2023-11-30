@@ -323,14 +323,14 @@ app.get("/search-connections/:name", async (req, res) =>{
             AND NOT (c) - [:CONNECTED] - (u)
             AND NOT (c) - [:BLOCKED] - (u)
             AND u <> c
-            RETURN c.uId AS uId, c.name AS name
+            RETURN c.uId AS uId, c.name AS name, exists((u) - [:INVITED] -> (c)) AS pending
             UNION
             MATCH (c:User), (u:User {uId: $userId})
             WHERE c.name STARTS WITH $name
             AND NOT (c) - [:CONNECTED] - (u)
             AND NOT (c) - [:BLOCKED] - (u)
             AND c <> u
-            RETURN c.uId AS uId, c.name AS name 
+            RETURN c.uId AS uId, c.name AS name, exists((u) - [:INVITED] -> (c)) AS pending
             LIMIT 50
         `
         const result = await session.executeRead(tx => tx.run(query, {name: name, userId: userId}))
@@ -339,7 +339,8 @@ app.get("/search-connections/:name", async (req, res) =>{
         for(const record of result.records){
             const user = {
                 uId: record.get("uId"),
-                name: record.get("name")
+                name: record.get("name"),
+                pending: record.get("pending")
             }
             searchResults.push(user)
         }
