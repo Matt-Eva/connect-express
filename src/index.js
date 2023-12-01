@@ -96,6 +96,7 @@ app.post("/login", async (req, res) =>{
                 profileImg: user.profileImg,
                 uId: user.uId
             }
+            console.log(req.session.user)
             res.status(200).send(req.session.user)
         } else {
             res.status(401).send({error: "unauthorized"})
@@ -122,6 +123,7 @@ app.delete("/logout", async (req, res) =>{
 })
 
 app.get("/me", (req, res) =>{
+    console.log(req.session.user)
     if (req.session.user){
         res.status(200).send(req.session.user)
     } else {
