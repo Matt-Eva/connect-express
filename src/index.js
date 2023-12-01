@@ -314,6 +314,7 @@ app.post("/new-chat", async(req, res) =>{
     console.log(uIds)
     const session = driver.session()
     try {
+
         const result = await session.executeWrite(async tx =>{
 
             const existingChat = await tx.run(`
@@ -339,10 +340,40 @@ app.post("/new-chat", async(req, res) =>{
 
             return newChat.records[0].get("chat").properties
         })
+
         res.status(200).send(result)
+
     } catch(e) {
         console.error(e)
         res.status(500).send({error: "internal server error"})
+    } finally {
+        await session.close()
+    }
+})
+
+app.delete("/leave-chat/:chatId", async (req, res) =>{
+    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
+
+    const selfId = req.session.user.uId
+    const chatId = req.params.chatId
+    const session = driver.session()
+    try{
+
+        const query = `
+            MATCH (u:User {uId: $selfId}) - [p:PARTICIPATING] -> (c:Chat {uId: $chatId})
+            DELETE p
+            WITH c
+            WHERE COUNT {(c) <-[:PARTICIPATING] - () } = 1
+            DETACH DELETE c
+        `
+
+        await session.executeWrite( tx => tx.run(query, {selfId, chatId}))
+
+        res.status(202).end()
+
+    } catch(e){
+        console.error(e)
+        res.status(500).send({message: "internal server error"})
     } finally {
         await session.close()
     }
