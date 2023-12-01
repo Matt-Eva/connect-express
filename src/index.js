@@ -81,6 +81,8 @@ app.post("/login", async (req, res) =>{
 
         const result = await session.executeRead( async tx => tx.run(query, {email: email}))
 
+        if (result.records.length ===0) return res.status(404).send({message: "user not found"})
+
         const user = result.records[0].get("user").properties
 
         const authenticated = await argon2.verify(user.password, password)
@@ -175,6 +177,10 @@ app.post("/new-account", async (req, res) => {
     }finally {
        await session.close()
     }
+})
+
+app.patch("/my-account", async (req, res) =>{
+    if (!req.session.user) return res.status(401).send({error: "unauthorized"})
 })
 
 app.get("/my-chats", async (req, res) =>{
