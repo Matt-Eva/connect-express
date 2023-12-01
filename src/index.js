@@ -255,6 +255,26 @@ app.patch("/update-password", async (req, res) => {
 
 app.delete("/my-account", async(req, res) =>{
     if (!req.session.user) return res.status(401).send({error: "unauthorized"})
+
+    const selfId = req.session.user.uId
+    const session = driver.session()
+    try{
+        const query = `
+            MATCH (u:User {uId: $selfId})
+            OPTIONAL MATCH (u) - [:SENT] -> (m:Message)
+            DETACH DELETE u, m
+        `
+
+        await session.executeWrite(tx => tx.run(query, {selfId}))
+        
+        res.status(202).end()
+
+    } catch(e){
+        console.error(e)
+        res.status(500).send({message: "internal server error"})
+    } finally{
+        await session.close()
+    }
 })
 
 app.get("/my-chats", async (req, res) =>{
