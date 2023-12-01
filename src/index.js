@@ -214,6 +214,43 @@ app.patch("/my-account", async (req, res) =>{
 
 app.patch("/update-password", async (req, res) => {
     if (!req.session.user) return res.status(401).send({error: "unauthorized"})
+
+    const selfId = req.session.user.uId
+    const passwordInfo = req.body.passwordInfo
+    const session = driver.session()
+
+    try{
+        const findQuery = `
+            MATCH (u:User {uId: $selfId})
+            RETURN u.password AS password
+        `
+        const user = await session.executeRead(tx => tx.run(findQuery, {selfId}) )
+
+        if (user.records.length === 0) return res.status(404).send({message: "user not found"})
+
+        const passwordHash = user.records[0].get("password")
+
+        const authorized = await argon2.verify(passwordHash, passwordInfo.currentPassword)
+
+        if (!authorized) return res.status(401).send({message: "Password entered for current password does not match current password."})
+
+        const newPasswordHash = await argon2.hash(passwordInfo.newPassword)
+        
+        const updateQuery = `
+            MATCH (u:User {uId: $selfId})
+            SET u.password = $newPassword
+        `
+
+        await session.executeWrite(tx => tx.run(updateQuery, {newPassword: newPasswordHash, selfId}))
+
+        res.status(202).end()
+
+    } catch (e){
+        console.error(e)
+        res.status(500).send({message: "internal server error"})
+    } finally{
+        await session.close()
+    }
 })
 
 app.delete("/my-account", async(req, res) =>{
