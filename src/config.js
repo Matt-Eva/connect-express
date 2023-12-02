@@ -24,7 +24,7 @@ const app = express()
 const server = http.createServer(app)
 
 const sessionMiddleware = session({
-    store: new Neo4jStore({ client: driver }),
+    // store: new Neo4jStore({ client: driver }),
     secret: process.env.SESSION_SECRET,
     saveUninitialized: false,
     resave: false
