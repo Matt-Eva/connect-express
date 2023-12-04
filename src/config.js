@@ -28,10 +28,10 @@ const sessionMiddleware = session({
     secret: process.env.SESSION_SECRET,
     saveUninitialized: false,
     resave: false,
-    domain: "silly-monstera-f550ab.netlify.app",
     cookie: {
         sameSite: 'none',
-        secure: true
+        secure: true,
+        domain: "silly-monstera-f550ab.netlify.app"
     }
 })
 
