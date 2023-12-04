@@ -34,7 +34,11 @@ console.log(process.env.FRONTEND_URL)
 
 app.use(cors({
     origin: process.env.FRONTEND_URL,
-    credentials: true
+    credentials: true,
+    cookie: {
+        sameSite: 'none',
+        secure: true
+    }
 }))
 
 app.use(sessionMiddleware)
