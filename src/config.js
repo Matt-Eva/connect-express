@@ -31,7 +31,6 @@ const sessionMiddleware = session({
     cookie: {
         sameSite: 'none',
         secure: true,
-        domain: ".netlify.app"
     }
 })
 
