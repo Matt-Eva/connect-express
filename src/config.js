@@ -31,7 +31,7 @@ const sessionMiddleware = session({
     cookie: {
         sameSite: 'none',
         secure: true,
-        domain: "silly-monstera-f550ab.netlify.app"
+        domain: ".netlify.app"
     }
 })
 
